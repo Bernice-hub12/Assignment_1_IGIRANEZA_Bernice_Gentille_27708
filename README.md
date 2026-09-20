@@ -1,27 +1,19 @@
-# Sunrise Supermarket – PL/SQL Assignment One(1)
+# Sunrise Supermarket – PLSQL Assignment One
 
-## My Information
-
-**Name:** IGIRANEZA Bernice Gentille
+**Full Name:** IGIRANEZA Bernice Gentille
 **Student ID:** 27708
+**Group:** Group C
 **Database Management System:** PostgreSQL
 
-## Business Scenario
+## 1. Business Scenario
 
-Sunrise Supermarket sells different products to customers. Customers place orders containing one or more products. The supermarket management needs to analyze customer information, purchases, and sales trends.
+Sunrise Supermarket sells products to customers who place orders containing one or more items. Management wants to understand who their customers are, what they buy, and how sales are trending over time.
 
-This project uses PostgreSQL to create and populate the supermarket database and demonstrates the use of JOINs, Common Table Expressions (CTEs), and Window Functions.
+For this assignment, a PostgreSQL database was created and populated with sample supermarket data. JOINs, a Common Table Expression (CTE), and Window Functions were then used to analyze customers, orders, products, and revenue.
 
-## Database Structure
+### Database Population
 
-The database contains four main tables:
-
-* **customers** – stores customer information such as name, email, and city.
-* **products** – stores product names, categories, and prices.
-* **orders** – stores customer orders and order dates.
-* **order_items** – stores the products and quantities included in each order.
-
-The database was populated with:
+The database contains:
 
 * 5 customers
 * 8 products
@@ -30,114 +22,327 @@ The database was populated with:
 * 26 order items
 * Orders distributed across multiple dates
 
-## JOIN Queries
+## 2. Database Structure
 
-### 1. Orders with Customer Information
+The database contains four tables:
 
-This query uses an INNER JOIN between the `orders` and `customers` tables.
+* **customers** – stores customer information such as name, email, and city.
+* **products** – stores product names, categories, and prices.
+* **orders** – stores customer orders and order dates.
+* **order_items** – stores the products and quantities included in each order.
 
-It displays each order together with the customer's name, city, and order date.
+## 3. JOIN Queries
 
-**Business interpretation:**
-This allows the supermarket to identify which customer placed each order and where the customer is located.
+### JOIN 1: Orders with Customer Information
+
+**Purpose:** List every order with the customer's name, city, and order date.
+
+**SQL Query:**
+
+```sql
+SELECT
+    o.order_id,
+    c.customer_name,
+    c.city,
+    o.order_date
+FROM orders o
+INNER JOIN customers c
+    ON o.customer_id = c.customer_id
+ORDER BY o.order_date;
+```
+
+**Explanation:**
+
+An `INNER JOIN` connects the `orders` table with the `customers` table using `customer_id`. This allows customer information to be displayed together with order information.
+
+**Business Interpretation:**
+
+This helps the supermarket identify which customer placed each order and the city associated with that customer.
 
 **Result:**
-See `screenshots/join1.png`.
 
-### 2. Order Items with Product Information
+See `Screenshots/Join1.png`.
 
-This query joins `order_items` with `products`.
+---
 
-It displays the product name, category, price, and quantity for each order item.
+### JOIN 2: Order Items with Product Information
 
-**Business interpretation:**
-This helps the supermarket understand which products were purchased and in what quantities.
+**Purpose:** List every order item with product name, category, price, and quantity.
+
+**SQL Query:**
+
+```sql
+SELECT
+    oi.order_item_id,
+    oi.order_id,
+    p.product_name,
+    p.category,
+    p.price,
+    oi.quantity
+FROM order_items oi
+INNER JOIN products p
+    ON oi.product_id = p.product_id
+ORDER BY oi.order_id, oi.order_item_id;
+```
+
+**Explanation:**
+
+This `INNER JOIN` connects `order_items` with `products` using `product_id`. It combines information about the purchased quantity with the corresponding product details.
+
+**Business Interpretation:**
+
+This helps the supermarket understand which products were purchased, their categories, prices, and the quantities purchased.
 
 **Result:**
-See `screenshots/join2.png`.
 
-### 3. All Customers and Their Orders
+See `Screenshots/Join2.png`.
 
-This query uses a LEFT JOIN between `customers` and `orders`.
+---
 
-It includes customers even when they have no orders.
+### JOIN 3: All Customers and Their Orders
 
-**Business interpretation:**
-This can help management identify customers who have not yet made any purchases.
+**Purpose:** List all customers and their orders, including customers who have no orders.
+
+**SQL Query:**
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    o.order_id,
+    o.order_date
+FROM customers c
+LEFT JOIN orders o
+    ON c.customer_id = o.customer_id
+ORDER BY c.customer_id, o.order_date;
+```
+
+**Explanation:**
+
+A `LEFT JOIN` keeps every customer from the `customers` table. If a customer has no order, the order information appears as `NULL`.
+
+**Business Interpretation:**
+
+This allows management to identify both active customers and customers who have not yet placed an order.
 
 **Result:**
-See `screenshots/join3.png`.
 
-## Common Table Expression (CTE)
+See `Screenshots/Join3.png`.
+
+## 4. Common Table Expression (CTE)
 
 ### Customers Above Average Spending
 
-The CTE first calculates the total amount spent by each customer using:
+**Purpose:** Calculate each customer's total spending and return customers whose spending is above the average.
+
+**SQL Query:**
+
+```sql
+WITH customer_totals AS (
+    SELECT
+        c.customer_id,
+        c.customer_name,
+        COALESCE(SUM(oi.quantity * p.price), 0) AS total_spend
+    FROM customers c
+    LEFT JOIN orders o
+        ON c.customer_id = o.customer_id
+    LEFT JOIN order_items oi
+        ON o.order_id = oi.order_id
+    LEFT JOIN products p
+        ON oi.product_id = p.product_id
+    GROUP BY
+        c.customer_id,
+        c.customer_name
+)
+SELECT
+    customer_id,
+    customer_name,
+    total_spend
+FROM customer_totals
+WHERE total_spend > (
+    SELECT AVG(total_spend)
+    FROM customer_totals
+)
+ORDER BY total_spend DESC;
+```
+
+**Explanation:**
+
+The CTE named `customer_totals` first calculates the total amount spent by every customer using:
 
 `quantity × price`
 
-The main query then compares each customer's total spending with the average customer spending and returns customers whose spending is above average.
+The main query then calculates the average spending and returns customers whose total spending is greater than that average.
 
-**Business interpretation:**
-Management can identify customers who contribute more revenue than the average customer.
+`COALESCE()` is used so that customers with no orders have a total spending value of zero.
 
-**Result:**
-See `screenshots/cte.png`.
+**Business Interpretation:**
 
-## Window Functions
-
-### 1. Rank Customers by Total Spending
-
-The `RANK()` window function ranks customers according to their total spending, with the highest spender receiving the first rank.
-
-**Business interpretation:**
-This helps management understand customer spending patterns.
+This helps management identify customers whose spending is above the average customer spending level.
 
 **Result:**
-See `screenshots/window1.png`.
 
-### 2. Number Each Customer's Orders
+See `Screenshots/CTE.png`.
 
-The `ROW_NUMBER()` window function numbers each customer's orders according to the order date.
+## 5. Window Functions
 
-**Business interpretation:**
-This allows the supermarket to see the sequence of purchases made by each customer.
+### Window Function 1: Rank Customers by Total Spending
+
+**Purpose:** Rank customers according to their total amount spent, with the highest spending ranked first.
+
+**SQL Query:**
+
+```sql
+WITH customer_totals AS (
+    SELECT
+        c.customer_id,
+        c.customer_name,
+        COALESCE(SUM(oi.quantity * p.price), 0) AS total_spend
+    FROM customers c
+    LEFT JOIN orders o
+        ON c.customer_id = o.customer_id
+    LEFT JOIN order_items oi
+        ON o.order_id = oi.order_id
+    LEFT JOIN products p
+        ON oi.product_id = p.product_id
+    GROUP BY
+        c.customer_id,
+        c.customer_name
+)
+SELECT
+    customer_id,
+    customer_name,
+    total_spend,
+    RANK() OVER (
+        ORDER BY total_spend DESC
+    ) AS spending_rank
+FROM customer_totals
+ORDER BY spending_rank;
+```
+
+**Explanation:**
+
+The `RANK()` window function assigns a ranking to each customer based on total spending. The `DESC` order means customers with higher spending receive higher positions.
+
+**Business Interpretation:**
+
+This allows management to compare customer spending levels and identify the customers with the highest total purchases.
 
 **Result:**
-See `screenshots/window2.png`.
 
-### 3. Running Total Revenue
+See `Screenshots/Window1.png`.
 
-A window function calculates the cumulative revenue over time based on order dates.
+---
 
-**Business interpretation:**
-Management can use the running total to monitor how revenue accumulates over the selected period.
+### Window Function 2: Number Each Customer's Orders
+
+**Purpose:** Number each customer's orders according to the order date.
+
+**SQL Query:**
+
+```sql
+SELECT
+    customer_id,
+    order_id,
+    order_date,
+    ROW_NUMBER() OVER (
+        PARTITION BY customer_id
+        ORDER BY order_date
+    ) AS order_number
+FROM orders
+ORDER BY customer_id, order_date;
+```
+
+**Explanation:**
+
+`ROW_NUMBER()` gives each order a sequential number. `PARTITION BY customer_id` makes the numbering restart for each customer, while `ORDER BY order_date` places the orders in chronological order.
+
+**Business Interpretation:**
+
+This helps the supermarket see the sequence of purchases made by each customer.
 
 **Result:**
-See `screenshots/window3.png`.
 
-### 4. Days Between Customer Orders
+See `Screenshots/Window2.png`.
 
-The `LAG()` window function retrieves each customer's previous order date. The difference between the current and previous order dates is then calculated.
+---
 
-**Business interpretation:**
-This helps management understand how frequently customers return to make purchases.
+### Window Function 3: Running Total Revenue
+
+**Purpose:** Show a running total of revenue over time.
+
+**SQL Query:**
+
+```sql
+WITH order_revenue AS (
+    SELECT
+        o.order_id,
+        o.order_date,
+        SUM(oi.quantity * p.price) AS order_revenue
+    FROM orders o
+    JOIN order_items oi
+        ON o.order_id = oi.order_id
+    JOIN products p
+        ON oi.product_id = p.product_id
+    GROUP BY
+        o.order_id,
+        o.order_date
+)
+SELECT
+    order_id,
+    order_date,
+    order_revenue,
+    SUM(order_revenue) OVER (
+        ORDER BY order_date, order_id
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS running_total_revenue
+FROM order_revenue
+ORDER BY order_date, order_id;
+```
+
+**Explanation:**
+
+The CTE first calculates the revenue for each order. The window function then adds each order's revenue to the revenue from all previous orders to produce a cumulative running total.
+
+**Business Interpretation:**
+
+This allows management to monitor how total revenue accumulates over time and observe sales trends across the selected dates.
 
 **Result:**
-See `screenshots/window4.png`.
 
-## Challenges and Resolutions
+See `Screenshots/Window3.png`.
 
-One challenge was adapting the provided database schema to PostgreSQL because the original schema used Oracle-style data types such as `NUMBER` and `VARCHAR2`.
+---
 
-The solution was to use PostgreSQL-compatible types such as `INTEGER`, `VARCHAR`, and `NUMERIC`.
+### Window Function 4: Days Between Customer Orders
 
-Another challenge was calculating customer spending while still including customers who had no orders. This was handled using `LEFT JOIN` and `COALESCE()`.
+**Purpose:** Show the number of days between each customer's current order and their previous order.
 
-## How to Run the Project
+**SQL Query:**
 
-1. Create a PostgreSQL database named `sunrise_supermarket`.
-2. Run `sql/01_create_tables.sql` to create the tables.
-3. Run `sql/02_insert_data.sql` to insert the sample data.
-4. Run `sql/03_queries.sql` to execute the JOIN, CTE, and Window Function queries.
-5. The screenshots in the `screenshots` folder show the query results.
+```sql
+WITH order_history AS (
+    SELECT
+        customer_id,
+        order_id,
+        order_date,
+        LAG(order_date) OVER (
+            PARTITION BY customer_id
+            ORDER BY order_date
+        ) AS previous_order_date
+    FROM orders
+)
+SELECT
+    customer_id,
+    order_id,
+    order_date,
+    previous_order_date,
+    order_date - previous_order_date AS days_between_orders
+FROM order_history
+WHERE previous_order_date IS NOT NULL
+ORDER BY customer_id, order_date;
+```
+
+**Explanation:**
+
+`LAG()` retrieves the previous order date for each customer. The previous date

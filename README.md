@@ -1,5 +1,7 @@
 # Sunrise Supermarket – PLSQL Assignment One
 
+## Student Information
+
 **Full Name:** IGIRANEZA Bernice Gentille
 **Student ID:** 27708
 **Group:** Group C
@@ -345,4 +347,60 @@ ORDER BY customer_id, order_date;
 
 **Explanation:**
 
-`LAG()` retrieves the previous order date for each customer. The previous date
+`LAG()` retrieves the previous order date for each customer. The previous date is then subtracted from the current order date to calculate the number of days between purchases.
+
+The first order of each customer is excluded because it has no previous order.
+
+**Business Interpretation:**
+
+This helps management understand customer purchasing frequency and how often customers return to make another purchase.
+
+**Result:**
+
+See `Screenshots/Window4.png`.
+
+## 6. Challenges and Resolutions
+
+### Challenge 1: Database Compatibility
+
+The provided schema used Oracle-style data types such as `NUMBER` and `VARCHAR2`, while this project was implemented using PostgreSQL.
+
+**Resolution:** The data types were adapted to PostgreSQL-compatible types such as `INTEGER`, `VARCHAR`, and `NUMERIC`.
+
+### Challenge 2: Customers with No Orders
+
+The analysis needed to include customers who had not placed any orders.
+
+**Resolution:** A `LEFT JOIN` was used to retain all customers, and `COALESCE()` was used in the spending calculations to represent customers with no purchases as having zero spending.
+
+## 7. How to Run the Project
+
+1. Open PostgreSQL/pgAdmin.
+2. Create a database named `sunrise_supermarket`.
+3. Open and run `Sql/01_Create_Tables.sql` to create the tables.
+4. Run `Sql/02_Insert_Data.sql` to populate the tables with sample data.
+5. Run `Sql/03_Queries.sql` to execute all JOIN, CTE, and Window Function queries.
+6. The query results are shown in the screenshots stored in the `Screenshots` folder.
+
+## 8. Project Files
+
+```text
+Assignment_1_IGIRANEZA_Bernice_Gentille_27708/
+│
+├── README.md
+│
+├── Sql/
+│   ├── 01_Create_Tables.sql
+│   ├── 02_Insert_Data.sql
+│   └── 03_Queries.sql
+│
+└── Screenshots/
+    ├── CTE.png
+    ├── Join1.png
+    ├── Join2.png
+    ├── Join3.png
+    ├── Window1.png
+    ├── Window2.png
+    ├── Window3.png
+    └── Window4.png
+```
